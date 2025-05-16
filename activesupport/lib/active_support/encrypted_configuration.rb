@@ -114,13 +114,21 @@ module ActiveSupport
       end
 
       def deserialize(content)
+        source = content.include?("<%") ? erb_content(content) : content
+
         config = YAML.respond_to?(:unsafe_load) ?
-          YAML.unsafe_load(content, filename: content_path) :
-          YAML.load(content, filename: content_path)
+          YAML.unsafe_load(source, filename: content_path) :
+          YAML.load(source, filename: content_path)
 
         config.presence || {}
       rescue Psych::SyntaxError
         raise InvalidContentError.new(content_path)
+      end
+
+      def erb_content(content, context = nil)
+        require "erb" unless defined?(ERB)
+        erb = ERB.new(content).tap { |e| e.filename = content_path.to_s }
+        context ? erb.result(context) : erb.result
       end
   end
 end
